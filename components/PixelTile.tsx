@@ -1,0 +1,64 @@
+import React, { useMemo } from 'react';
+import { PALETTE } from '../constants';
+
+interface PixelTileProps {
+  sprite?: string[];
+  colorMap?: Record<string, string>;
+  baseColor?: string;
+  scale?: number;
+  className?: string;
+}
+
+const PixelTile: React.FC<PixelTileProps> = ({ 
+  sprite, 
+  colorMap, 
+  baseColor = PALETTE.TRANSPARENT,
+  scale = 1,
+  className = ""
+}) => {
+
+  const pixels = useMemo(() => {
+    if (!sprite) return null;
+    
+    return sprite.map((row, y) => (
+      row.split('').map((char, x) => {
+        let fill = baseColor;
+        if (colorMap && colorMap[char]) {
+          fill = colorMap[char];
+        } else if (char !== '.') {
+           // Fallback or explicit mapping can go here
+           fill = baseColor;
+        } else {
+            return null; // Transparent
+        }
+        
+        return (
+          <rect 
+            key={`${x}-${y}`} 
+            x={x} 
+            y={y} 
+            width={1} 
+            height={1} 
+            fill={fill} 
+          />
+        );
+      })
+    ));
+  }, [sprite, colorMap, baseColor]);
+
+  return (
+    <svg 
+      viewBox="0 0 16 16" 
+      width="100%" 
+      height="100%" 
+      className={`block ${className}`}
+      style={{ imageRendering: 'pixelated' }}
+    >
+        {/* Background Base */}
+        <rect x="0" y="0" width="16" height="16" fill={baseColor} />
+        {pixels}
+    </svg>
+  );
+};
+
+export default PixelTile;

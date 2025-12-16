@@ -1,0 +1,5 @@
+{
+  "name": "Pixel Farm 8x8",
+  "description": "A retro 8x8 pixel art farming simulation game with persistent auto-save and tile-based interaction.",
+  "requestFramePermissions": []
+}
