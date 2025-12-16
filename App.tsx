@@ -48,14 +48,6 @@ const App: React.FC = () => {
 
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-
-    const executeMove = () => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        // Recalculate based on current mouse pos is tricky in interval without ref tracking
-        // But for grid movement, let's just use the initial direction or current mouse pos?
-        // Let's use current mouse pos to allow steering while holding
-        // We need a ref for mouse pos
-    };
     
     // We'll use a simpler interval that reads a ref
     startMoving(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());

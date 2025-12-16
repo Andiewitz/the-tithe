@@ -1,4 +1,4 @@
-import { Direction, TileType, Inventory } from './types';
+import { Direction, Inventory } from './types';
 
 export const GRID_WIDTH = 40; 
 export const GRID_HEIGHT = 40;

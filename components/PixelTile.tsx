@@ -5,7 +5,6 @@ interface PixelTileProps {
   sprite?: string[];
   colorMap?: Record<string, string>;
   baseColor?: string;
-  scale?: number;
   className?: string;
 }
 
@@ -13,14 +12,16 @@ const PixelTile: React.FC<PixelTileProps> = ({
   sprite, 
   colorMap, 
   baseColor = PALETTE.TRANSPARENT,
-  scale = 1,
   className = ""
 }) => {
 
-  const pixels = useMemo(() => {
-    if (!sprite) return null;
+  const { pixels, width, height } = useMemo(() => {
+    if (!sprite) return { pixels: null, width: 16, height: 16 };
     
-    return sprite.map((row, y) => (
+    const h = sprite.length;
+    const w = h > 0 ? sprite[0].length : 0;
+
+    const renderedPixels = sprite.map((row, y) => (
       row.split('').map((char, x) => {
         let fill = baseColor;
         if (colorMap && colorMap[char]) {
@@ -44,18 +45,20 @@ const PixelTile: React.FC<PixelTileProps> = ({
         );
       })
     ));
+
+    return { pixels: renderedPixels, width: w, height: h };
   }, [sprite, colorMap, baseColor]);
 
   return (
     <svg 
-      viewBox="0 0 16 16" 
+      viewBox={`0 0 ${width} ${height}`} 
       width="100%" 
       height="100%" 
       className={`block ${className}`}
       style={{ imageRendering: 'pixelated' }}
     >
         {/* Background Base */}
-        <rect x="0" y="0" width="16" height="16" fill={baseColor} />
+        <rect x="0" y="0" width={width} height={height} fill={baseColor} />
         {pixels}
     </svg>
   );
