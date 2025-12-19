@@ -1,3 +1,4 @@
+
 import { Direction, Inventory } from './types';
 
 export const GRID_WIDTH = 40; 
@@ -6,35 +7,39 @@ export const VIEWPORT_WIDTH_TILES = 15;
 export const VIEWPORT_HEIGHT_TILES = 10;
 
 export const TILE_SIZE = 48; 
-export const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000; 
+export const AUTO_SAVE_INTERVAL_MS = 60 * 1000; // Save every minute
 
-export const QUOTA_TARGET = 50;
+export const QUOTA_TARGET = 40;
 export const MAX_DAYS = 7;
 
 // Horror Palette
 export const PALETTE = {
   TRANSPARENT: 'transparent',
-  GRASS_BASE: '#1a261a', // Darker, gloomy grass
+  GRASS_BASE: '#1a261a', 
   GRASS_LIGHT: '#2d3e2d',
-  DIRT_BASE: '#4a3c31', // Desaturated dirt
-  WATER_BASE: '#1a2e3a', // Dark water
+  DIRT_BASE: '#3a2e25', 
+  DIRT_LIGHT: '#4a3c31',
+  WATER_BASE: '#0f1a24', 
+  WATER_SHORE: '#1a2e3a',
   WOOD_DARK: '#2d1e1e',
   WOOD_LIGHT: '#4a3232',
-  RED_BARN: '#6e1a1a', // Blood red barn
-  WHITE: '#a0a0a0', // Dim white
-  SKIN: '#b08d74',
-  OVERALLS: '#203c50',
-  SHIRT: '#6e1a1a',
-  HAT: '#8f684b',
+  RED_BARN: '#5e1515', 
+  RED_BARN_BRIGHT: '#8b1e1e',
+  WHITE: '#d1d1d1', 
+  SKIN: '#9e7a61',
+  OVERALLS: '#1a2b3c',
+  SHIRT: '#4e1212',
+  HAT: '#705139',
   BLACK: '#050505',
   STONE: '#3d3d3d',
   STONE_LIGHT: '#525252',
-  WHEAT: '#bfa143', // Dull gold
-  CORN: '#c29219',
-  PLANT_GREEN: '#365c36' // Dark green crops
+  WHEAT: '#a68a37', 
+  CORN: '#bfa02a',
+  PLANT_GREEN: '#2a4d2a' 
 };
 
 export const SPRITES: Record<string, string[]> = {
+  // 16x16 Entities
   FARMER_DOWN: [
     "................",
     ".....xxxxxx.....",
@@ -43,7 +48,7 @@ export const SPRITES: Record<string, string[]> = {
     "...xxxxxxxxxx...",
     "...xxxxxxxxxx...",
     "....oooooooo....",
-    "....oooooooo....",
+    "....o.oo.o.o....",
     "....oooooooo....",
     "...yyyyyyyyyy...",
     "...yyyyyyyyyy...",
@@ -78,8 +83,8 @@ export const SPRITES: Record<string, string[]> = {
     "....xxxxxxxx....",
     "....xxxxxxxxxx..",
     "....xxxxxxxxxx..",
-    ".....oooooo.....",
-    ".....oooooo.....",
+    ".....ooooooo....",
+    ".....o.oooo.....",
     "....yyyyyyyy....",
     "...yyyyyyyyyy...",
     "...yyyyyyyyyy...",
@@ -89,131 +94,87 @@ export const SPRITES: Record<string, string[]> = {
     "....zzzz........",
     "................"
   ],
+  
+  // 8x8 Tiles
   GRASS: [
-    "gggggggggggggggg",
-    "gggghggggggggggg",
-    "ggghghgggggggggg",
-    "gggggggggggggggg",
-    "ggggggggggghgggg",
-    "ggggggggggghhggg",
-    "gggggggggggggggg",
-    "gggggggggggggggg",
-    "gghggggggggggggg",
-    "ghhhgggggggggggg",
-    "gggggggggggggggg",
-    "ggggggggggghgggg",
-    "gggggggggghhgggg",
-    "gggggggggggggggg",
-    "gggggggggggggggg",
-    "gggggggggggggggg"
+    "ghgggggg",
+    "gggggggg",
+    "ggggghgg",
+    "gggggggg",
+    "gghggggg",
+    "gggggggg",
+    "gggggghg",
+    "gggggggg"
+  ],
+  DIRT: [
+    "dddddddd",
+    "dldddddd",
+    "dddddddd",
+    "ddddddld",
+    "dddddddd",
+    "dldddddd",
+    "dddddddd",
+    "dddddddd"
   ],
   ROCK: [
-    "................",
-    "................",
-    "......ssss......",
-    "....ssssssss....",
-    "...ssssssssss...",
-    "..ssssllssssss..",
-    "..sssslllsssss..",
-    "..ssssllssssss..",
-    "..ssssssssssss..",
-    "...ssssssssss...",
-    "....ssssssss....",
-    ".....ssssss.....",
-    "................",
-    "................",
-    "................",
-    "................"
+    "........",
+    "..ssss..",
+    ".ssllss.",
+    ".slllls.",
+    ".ssllss.",
+    "..ssss..",
+    "........",
+    "........"
   ],
   STUMP: [
-    "................",
-    "................",
-    "................",
-    "......w..w......",
-    ".....wwwwww.....",
-    "....wwwwwwww....",
-    "....wwwwwwww....",
-    "....wwwwwwww....",
-    "....wwwwwwww....",
-    ".....wwwwww.....",
-    ".....wwwwww.....",
-    "....wwwwwwww....",
-    "................",
-    "................",
-    "................",
-    "................"
+    "........",
+    "...ww...",
+    "..wwww..",
+    ".wwwwww.",
+    ".wwwwww.",
+    "..wwww..",
+    "........",
+    "........"
   ],
   CROP_0: [
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    ".......g........",
-    "......ggg.......",
-    ".......g........",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................"
+    "........",
+    "........",
+    "........",
+    "........",
+    "....g...",
+    "...ggg..",
+    "....g...",
+    "........"
   ],
   CROP_1: [
-    "................",
-    "................",
-    "................",
-    "................",
-    ".......gg.......",
-    "......gggg......",
-    ".......gg.......",
-    ".......gg.......",
-    ".......gg.......",
-    ".......gg.......",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................"
+    "........",
+    "....g...",
+    "...ggg..",
+    "....g...",
+    "....g...",
+    "....g...",
+    "....g...",
+    "........"
   ],
   CROP_2: [
-    "................",
-    "................",
-    ".......yy.......",
-    "......yyyy......",
-    ".......yy.......",
-    ".......gg.......",
-    "......gggg......",
-    ".......gg.......",
-    ".......gg.......",
-    ".......gg.......",
-    ".......gg.......",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................"
+    "....y...",
+    "...yyy..",
+    "....y...",
+    "....g...",
+    "...ggg..",
+    "....g...",
+    "....g...",
+    "........"
   ],
   CROP_3: [
-    "................",
-    ".......yy.......",
-    "......yyyy......",
-    ".....yyyyyy.....",
-    "......yyyy......",
-    ".......gg.......",
-    "......gggg......",
-    ".....gggggg.....",
-    "......gggg......",
-    ".......gg.......",
-    ".......gg.......",
-    ".......gg.......",
-    "................",
-    "................",
-    "................",
-    "................"
+    "...yyy..",
+    "..yyyyy.",
+    "...yyy..",
+    "....g...",
+    "...ggg..",
+    "..ggggg.",
+    "...ggg..",
+    "....g..."
   ]
 };
 
@@ -226,8 +187,8 @@ export const INITIAL_PLAYER = {
 
 export const INITIAL_INVENTORY: Inventory = {
   seeds: {
-    WHEAT: 25,
-    CORN: 25
+    WHEAT: 20,
+    CORN: 20
   },
   crops: {
     WHEAT: 0,

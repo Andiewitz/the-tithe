@@ -16,6 +16,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
   const mapWidthPx = GRID_WIDTH * TILE_SIZE;
   const mapHeightPx = GRID_HEIGHT * TILE_SIZE;
 
+  // Camera tracking
   let camX = (player.x * TILE_SIZE) + (TILE_SIZE / 2) - (viewportWidthPx / 2);
   let camY = (player.y * TILE_SIZE) + (TILE_SIZE / 2) - (viewportHeightPx / 2);
 
@@ -30,11 +31,12 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
     switch (type) {
       case TileType.DIRT:
         baseColor = PALETTE.DIRT_BASE;
-        colorMap = { 'g': PALETTE.DIRT_BASE, 'h': PALETTE.DIRT_BASE }; 
+        sprite = SPRITES.DIRT;
+        colorMap = { 'd': PALETTE.DIRT_BASE, 'l': PALETTE.DIRT_LIGHT }; 
         break;
       case TileType.WATER:
         baseColor = PALETTE.WATER_BASE;
-        colorMap = { 'g': PALETTE.WATER_BASE, 'h': '#1e3a4a' };
+        sprite = undefined;
         break;
       case TileType.BARN_TL:
       case TileType.BARN_TR:
@@ -95,10 +97,14 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         />
         {cropElement}
 
-        {(type === TileType.BARN_TL) && <div className="absolute inset-0 bg-white/10 border-t-4 border-l-4 border-white/20" />}
-        {(type === TileType.BARN_TR) && <div className="absolute inset-0 bg-white/10 border-t-4 border-r-4 border-white/20" />}
-        {(type === TileType.BARN_BL) && <div className="absolute inset-0 bg-black/40 border-l-4 border-white/20 text-[10px] flex items-center justify-center font-bold text-red-300 tracking-widest">SLEEP</div>}
-        {(type === TileType.BARN_BR) && <div className="absolute inset-0 bg-black/40 border-r-4 border-white/20" />}
+        {/* Barn Overlay Visuals */}
+        {(type === TileType.BARN_TL) && <div className="absolute inset-0 bg-red-900/40 border-t-2 border-l-2 border-red-800" />}
+        {(type === TileType.BARN_TR) && <div className="absolute inset-0 bg-red-900/40 border-t-2 border-r-2 border-red-800" />}
+        {(type === TileType.BARN_BL) && <div className="absolute inset-0 bg-black/60 border-l-2 border-red-800 flex items-center justify-center text-[8px] font-bold text-red-500 uppercase">Sleep</div>}
+        {(type === TileType.BARN_BR) && <div className="absolute inset-0 bg-black/60 border-r-2 border-red-800" />}
+        
+        {/* Fence Overlay */}
+        {(type === TileType.FENCE) && <div className="absolute inset-0 border border-zinc-900 opacity-50" />}
       </div>
     );
   };
@@ -124,7 +130,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
 
   return (
     <div 
-        className="relative transition-transform duration-200 ease-out will-change-transform"
+        className="relative transition-transform duration-150 ease-linear will-change-transform"
         style={{
             width: mapWidthPx,
             height: mapHeightPx,
@@ -133,6 +139,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
     >
       {grid.map((row, y) => row.map((tile, x) => renderTile(tile.type, x, y, tile)))}
 
+      {/* Player Character (16x16 sprite rendered in TILE_SIZE) */}
       <div
         style={{
           width: TILE_SIZE,
@@ -140,7 +147,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
           position: 'absolute',
           left: player.x * TILE_SIZE,
           top: player.y * TILE_SIZE,
-          transition: 'top 0.15s steps(8), left 0.15s steps(8)',
+          transition: 'all 0.15s steps(4)',
           transform: player.facing === Direction.LEFT ? 'scaleX(-1)' : 'none'
         }}
         className="z-20"
@@ -152,14 +159,15 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         />
       </div>
 
+       {/* Vignette / Flashlight Effect */}
        <div 
-         className="absolute pointer-events-none z-30 mix-blend-hard-light"
+         className="absolute pointer-events-none z-30 mix-blend-multiply"
          style={{
-            top: (player.y * TILE_SIZE) - 300,
-            left: (player.x * TILE_SIZE) - 300,
-            width: 600 + TILE_SIZE,
-            height: 600 + TILE_SIZE,
-            background: 'radial-gradient(circle, rgba(255,200,100,0.15) 0%, rgba(0,0,0,0) 60%)'
+            top: (player.y * TILE_SIZE) - 400,
+            left: (player.x * TILE_SIZE) - 400,
+            width: 800 + TILE_SIZE,
+            height: 800 + TILE_SIZE,
+            background: 'radial-gradient(circle, transparent 10%, rgba(0,0,0,0.8) 50%, #000 70%)'
          }}
        />
     </div>

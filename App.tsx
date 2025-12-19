@@ -12,31 +12,70 @@ const App: React.FC = () => {
 
   const moveIntervalRef = useRef<number | null>(null);
   const mousePosRef = useRef<{x: number, y: number} | null>(null);
+  const keysPressed = useRef<Set<string>>(new Set());
 
   const width = VIEWPORT_WIDTH_TILES * TILE_SIZE;
   const height = VIEWPORT_HEIGHT_TILES * TILE_SIZE;
 
+  // Process keyboard movement in an interval for smooth continuous movement
+  useEffect(() => {
+    const tick = () => {
+      if (gameState.gameStatus !== GameStatus.PLAYING) return;
+      
+      const keys = keysPressed.current;
+      // Priority: Up/Down, then Left/Right to prevent diagonal movement issues in grid
+      if (keys.has('arrowup') || keys.has('w')) {
+        movePlayer(0, -1, Direction.UP);
+      } else if (keys.has('arrowdown') || keys.has('s')) {
+        movePlayer(0, 1, Direction.DOWN);
+      } else if (keys.has('arrowleft') || keys.has('a')) {
+        movePlayer(-1, 0, Direction.LEFT);
+      } else if (keys.has('arrowright') || keys.has('d')) {
+        movePlayer(1, 0, Direction.RIGHT);
+      }
+    };
+
+    const interval = window.setInterval(tick, 150); // Matches step animation roughly
+    return () => window.clearInterval(interval);
+  }, [movePlayer, gameState.gameStatus]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.repeat) return;
+        const key = e.key.toLowerCase();
         
-        switch(e.key.toLowerCase()) {
-            case 'e': till(); break;
-            case 'f': plant(); break;
-            case 'd': setShowInventory(prev => !prev); break;
+        // Non-movement single-press actions
+        if (!e.repeat) {
+            switch(key) {
+                case 'e': till(); break;
+                case 'f': plant(); break;
+                case 'i': setShowInventory(prev => !prev); break;
+                case 'escape': setShowInventory(false); setShowHelp(false); break;
+            }
         }
 
-        switch(e.key) {
-            case 'ArrowUp': movePlayer(0, -1, Direction.UP); break;
-            case 'ArrowDown': movePlayer(0, 1, Direction.DOWN); break;
-            case 'ArrowLeft': movePlayer(-1, 0, Direction.LEFT); break;
-            case 'ArrowRight': movePlayer(1, 0, Direction.RIGHT); break;
+        // Add movement keys to set for continuous movement processing
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+            keysPressed.current.add(key);
         }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+        keysPressed.current.delete(e.key.toLowerCase());
+    };
+
+    const handleBlur = () => {
+        keysPressed.current.clear();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [movePlayer, till, plant]);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('blur', handleBlur);
+    };
+  }, [till, plant]);
 
   const moveTowardsMouse = (rect: DOMRect) => {
       if (!mousePosRef.current) return;
@@ -56,7 +95,8 @@ const App: React.FC = () => {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 2) return;
+    // Only trigger for touch or secondary button (right click) to allow pathing
+    if (e.button !== 2 && e.pointerType !== 'touch') return;
     if (gameState.gameStatus !== GameStatus.PLAYING) return;
 
     e.preventDefault();
@@ -71,7 +111,7 @@ const App: React.FC = () => {
     if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
     moveIntervalRef.current = window.setInterval(() => {
          moveTowardsMouse(rect);
-    }, 200);
+    }, 180);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -81,7 +121,7 @@ const App: React.FC = () => {
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    if (e.button === 2) {
+    if (e.button === 2 || e.pointerType === 'touch') {
         if (moveIntervalRef.current) {
             clearInterval(moveIntervalRef.current);
             moveIntervalRef.current = null;
@@ -91,15 +131,15 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black text-red-100">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950 text-red-100 font-mono">
       
       <header className="mb-4 text-center select-none z-10">
-        <h1 className="text-3xl text-red-700 mb-1 drop-shadow-md font-bold tracking-widest">THE TITHE</h1>
-        <p className="text-xs text-zinc-600">The Beast demands <span className="text-red-500">{QUOTA_TARGET}</span> souls... I mean crops.</p>
+        <h1 className="text-4xl text-red-900 mb-1 font-black tracking-tighter shadow-red-500/10 shadow-lg">THE TITHE</h1>
+        <p className="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">Harvest {QUOTA_TARGET} to survive.</p>
       </header>
 
       <div 
-        className="relative bg-[#050505] border-4 border-zinc-900 shadow-[0_0_30px_rgba(100,0,0,0.3)] rounded-sm overflow-hidden touch-none cursor-crosshair"
+        className="relative bg-[#020202] border-[12px] border-zinc-900 shadow-[0_0_60px_rgba(0,0,0,1)] rounded-sm overflow-hidden touch-none cursor-crosshair"
         style={{ width, height }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -109,98 +149,108 @@ const App: React.FC = () => {
       >
         <WorldRenderer gameState={gameState} />
         
-        <div className="absolute inset-0 pointer-events-none z-30 bg-[radial-gradient(circle,transparent_40%,#000000_100%)] opacity-80"></div>
-        {gameState.day === MAX_DAYS && (
-             <div className="absolute inset-0 pointer-events-none z-20 bg-red-900/10 mix-blend-overlay animate-pulse"></div>
-        )}
-
-        <div className="absolute top-2 left-2 flex flex-col gap-2 pointer-events-none z-40">
-          <div className="bg-black/80 p-2 rounded text-xs border border-red-900/30 text-red-100">
-             <span className="text-zinc-500 uppercase text-[10px] block mb-1">Deadline</span>
-             Day {gameState.day} / {MAX_DAYS}
+        {/* HUD Elements */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-40">
+          <div className="bg-black/90 p-3 border border-red-950/50 rounded shadow-xl">
+             <span className="text-zinc-600 uppercase text-[8px] block mb-1">Season Progress</span>
+             <div className="text-sm font-bold">DAY {gameState.day} <span className="text-zinc-700">/ {MAX_DAYS}</span></div>
           </div>
-          <div className="bg-black/80 p-2 rounded text-xs border border-red-900/30">
-             <span className="text-zinc-500 uppercase text-[10px] block mb-1">Quota</span>
-             <div className="flex items-end gap-1">
-                 <span className={`text-xl ${gameState.harvestedTotal >= QUOTA_TARGET ? 'text-green-500' : 'text-red-500'}`}>
+          <div className="bg-black/90 p-3 border border-red-950/50 rounded shadow-xl">
+             <span className="text-zinc-600 uppercase text-[8px] block mb-1">Tithe Quota</span>
+             <div className="flex items-baseline gap-2">
+                 <span className={`text-2xl font-black ${gameState.harvestedTotal >= QUOTA_TARGET ? 'text-green-600' : 'text-red-700'}`}>
                     {gameState.harvestedTotal}
                  </span>
-                 <span className="text-zinc-500">/ {QUOTA_TARGET}</span>
+                 <span className="text-zinc-700 text-xs">/ {QUOTA_TARGET}</span>
              </div>
           </div>
         </div>
 
-        <div className="absolute top-2 right-2 pointer-events-none z-40 bg-black/80 p-2 rounded text-xs border border-zinc-800">
-             <span className="text-zinc-500 uppercase text-[10px] block mb-1">Current Seed</span>
-             {gameState.selectedSeed} ({gameState.inventory.seeds[gameState.selectedSeed]})
+        <div className="absolute top-4 right-4 pointer-events-none z-40 flex flex-col gap-2 items-end">
+            <div className="bg-black/90 p-3 border border-zinc-900 rounded shadow-xl">
+                <span className="text-zinc-600 uppercase text-[8px] block mb-1">Active Pouch</span>
+                <div className="text-xs font-bold text-zinc-300">
+                    {gameState.selectedSeed} <span className="text-zinc-600">({gameState.inventory.seeds[gameState.selectedSeed]})</span>
+                </div>
+            </div>
         </div>
 
+        {/* Game End States */}
         {gameState.gameStatus === GameStatus.LOST && (
-            <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-1000">
-                <h2 className="text-4xl text-red-600 font-bold mb-4 tracking-widest">CONSUMED</h2>
-                <p className="text-zinc-500 text-xs mb-8">You failed to meet the quota. The barn doors open...</p>
-                <button onClick={resetGame} className="border border-red-900 text-red-500 px-4 py-2 hover:bg-red-900/20">TRY AGAIN</button>
+            <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-center animate-pulse">
+                <h2 className="text-5xl text-red-950 font-black mb-4 uppercase tracking-tighter">SACRIFICED</h2>
+                <p className="text-zinc-700 text-xs mb-12 max-w-[200px]">The Beast does not tolerate insufficient yields.</p>
+                <button onClick={resetGame} className="border-4 border-red-900 text-red-800 px-8 py-4 font-bold hover:bg-red-950/20 active:scale-95 transition-transform uppercase">Restart Cycle</button>
             </div>
         )}
         {gameState.gameStatus === GameStatus.WON && (
-            <div className="absolute inset-0 z-50 bg-zinc-900 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-1000">
-                <h2 className="text-4xl text-yellow-600 font-bold mb-4 tracking-widest">SURVIVED</h2>
-                <p className="text-zinc-400 text-xs mb-8">The beast is satiated... for this season.</p>
-                <button onClick={resetGame} className="border border-yellow-900 text-yellow-500 px-4 py-2 hover:bg-yellow-900/20">PLAY AGAIN</button>
+            <div className="absolute inset-0 z-50 bg-zinc-950 flex flex-col items-center justify-center p-8 text-center">
+                <h2 className="text-5xl text-zinc-300 font-black mb-4 uppercase tracking-tighter">SPARED</h2>
+                <p className="text-zinc-500 text-xs mb-12 max-w-[200px]">The Beast sleeps. You have been granted another season.</p>
+                <button onClick={resetGame} className="border-4 border-zinc-700 text-zinc-500 px-8 py-4 font-bold hover:bg-zinc-800 transition-colors uppercase">Next Season</button>
             </div>
         )}
 
+        {/* Inventory Modal */}
         {showInventory && gameState.gameStatus === GameStatus.PLAYING && (
-            <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center pointer-events-auto">
-                <div className="bg-zinc-900 border border-zinc-700 p-6 w-3/4 max-w-sm shadow-2xl">
-                    <h2 className="text-center text-zinc-400 mb-6 border-b border-zinc-800 pb-2 text-xs tracking-widest uppercase">Inventory</h2>
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="absolute inset-0 bg-black/95 z-50 flex items-center justify-center pointer-events-auto backdrop-blur-sm">
+                <div className="bg-zinc-900 border-4 border-zinc-800 p-8 w-80 shadow-2xl">
+                    <h2 className="text-center text-zinc-500 mb-8 border-b border-zinc-800 pb-4 text-[10px] tracking-[0.3em] uppercase">Storage</h2>
+                    <div className="grid grid-cols-1 gap-4">
                         {(['WHEAT', 'CORN'] as const).map(seed => (
                             <button
                                 key={seed}
-                                onClick={() => selectSeed(seed)}
-                                className={`p-4 border flex flex-col items-center gap-2 transition-all ${gameState.selectedSeed === seed ? 'border-red-800 bg-red-900/10' : 'border-zinc-800 hover:border-zinc-600'}`}
+                                onClick={() => { selectSeed(seed); setShowInventory(false); }}
+                                className={`p-4 border-2 flex items-center justify-between transition-all ${gameState.selectedSeed === seed ? 'border-red-900 bg-red-950/20' : 'border-zinc-800 hover:border-zinc-700'}`}
                             >
-                                <div className={`w-2 h-2 rounded-full ${seed === 'WHEAT' ? 'bg-yellow-700' : 'bg-orange-700'}`}></div>
-                                <span className="text-[10px] text-zinc-300">{seed}</span>
-                                <span className="text-[10px] text-zinc-500">x{gameState.inventory.seeds[seed]}</span>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-3 h-3 ${seed === 'WHEAT' ? 'bg-yellow-700' : 'bg-orange-700'} shadow-[0_0_5px_rgba(0,0,0,0.5)]`}></div>
+                                    <span className="text-xs font-bold text-zinc-400 uppercase">{seed}</span>
+                                </div>
+                                <span className="text-[10px] text-zinc-600 font-mono">x{gameState.inventory.seeds[seed]}</span>
                             </button>
                         ))}
                     </div>
                     <button 
                         onClick={() => setShowInventory(false)}
-                        className="mt-6 w-full border border-zinc-700 hover:bg-zinc-800 text-zinc-400 py-2 text-[10px] uppercase"
+                        className="mt-8 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 py-3 text-[10px] uppercase font-bold tracking-widest"
                     >
-                        Close
+                        Return
                     </button>
                 </div>
             </div>
         )}
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-4 max-w-lg w-full z-10">
-        <div className="grid grid-cols-2 gap-4 w-full">
+      {/* On-Screen Mobile/Casual Controls */}
+      <div className="mt-8 flex flex-col items-center gap-6 max-w-lg w-full z-10">
+        <div className="flex items-center gap-4 w-full">
             <button 
-                onClick={manualSave}
-                className="bg-zinc-900 hover:bg-zinc-800 text-zinc-500 py-3 px-4 rounded border border-zinc-800 transition-all text-[10px] uppercase tracking-wider"
+                onClick={till}
+                className="flex-1 bg-red-950/10 hover:bg-red-950/30 text-red-900 py-6 px-4 rounded border-2 border-red-950/40 transition-all font-black uppercase text-xs active:scale-95"
             >
-                Save Progress
+                [E] INTERACT
             </button>
             <button 
-                onClick={() => setShowHelp(!showHelp)}
-                className="bg-zinc-900 hover:bg-zinc-800 text-zinc-500 py-3 px-4 rounded border border-zinc-800 transition-all text-[10px] uppercase tracking-wider"
+                onClick={plant}
+                className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-500 py-6 px-4 rounded border-2 border-zinc-800 transition-all font-black uppercase text-xs active:scale-95"
             >
-                {showHelp ? 'Hide Controls' : 'Show Controls'}
+                [F] PLANT
             </button>
         </div>
 
+        <div className="grid grid-cols-2 gap-4 w-full opacity-60 hover:opacity-100 transition-opacity">
+            <button onClick={() => setShowInventory(true)} className="bg-black py-3 border border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-widest">[I] INVENTORY</button>
+            <button onClick={() => setShowHelp(!showHelp)} className="bg-black py-3 border border-zinc-900 text-zinc-700 text-[10px] uppercase font-bold tracking-widest">Controls</button>
+        </div>
+
         {showHelp && (
-            <div className="bg-zinc-950 p-4 rounded border border-zinc-900 text-[10px] leading-loose w-full select-none text-zinc-500">
-                <p><span className="text-red-800">HOLD RIGHT CLICK</span> : Move Farmer (Grid Step)</p>
-                <p><span className="text-red-800">E</span> : Till Dirt / Harvest / Interact (At Feet)</p>
-                <p><span className="text-red-800">F</span> : Plant Selected Seed (At Feet)</p>
-                <p><span className="text-red-800">D</span> : Inventory</p>
-                <p className="mt-2 text-zinc-700 italic">Face the Barn door and press E to Sleep and advance the day.</p>
+            <div className="bg-black/50 p-6 rounded border-2 border-zinc-900 text-[9px] leading-[1.8] w-full select-none text-zinc-600 uppercase font-bold tracking-wider text-center">
+                <p>WASD / Arrows : Walk</p>
+                <p>E : Till / Harvest / Sleep (At Barn Door)</p>
+                <p>F : SOW SEED</p>
+                <p>I : INVENTORY</p>
+                <p>Hold Right Click / Touch : Auto-Path</p>
             </div>
         )}
       </div>
