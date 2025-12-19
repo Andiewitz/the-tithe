@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameEngine } from './hooks/useGameEngine';
 import WorldRenderer from './components/WorldRenderer';
@@ -9,14 +10,12 @@ const App: React.FC = () => {
   const [showInventory, setShowInventory] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
-  // Pointer/Touch Logic Refs
   const moveIntervalRef = useRef<number | null>(null);
+  const mousePosRef = useRef<{x: number, y: number} | null>(null);
 
-  // Calculate container size (Viewport only)
   const width = VIEWPORT_WIDTH_TILES * TILE_SIZE;
   const height = VIEWPORT_HEIGHT_TILES * TILE_SIZE;
 
-  // Keyboard Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.repeat) return;
@@ -39,35 +38,6 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [movePlayer, till, plant]);
 
-
-  // Mouse Movement Logic (Grid by Grid)
-  const handlePointerDown = (e: React.PointerEvent) => {
-    // Only Right Click (button 2) triggers movement
-    if (e.button !== 2) return;
-    if (gameState.gameStatus !== GameStatus.PLAYING) return;
-
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    
-    // We'll use a simpler interval that reads a ref
-    startMoving(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
-  };
-
-  const mousePosRef = useRef<{x: number, y: number} | null>(null);
-
-  const startMoving = (x: number, y: number, rect: DOMRect) => {
-      mousePosRef.current = { x, y };
-      
-      // Execute immediate move
-      moveTowardsMouse(rect);
-
-      // Start interval for held movement (slower than before to lock to grid feel)
-      if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
-      moveIntervalRef.current = window.setInterval(() => {
-         moveTowardsMouse(rect);
-      }, 200); // 200ms feels like a deliberate step
-  };
-
   const moveTowardsMouse = (rect: DOMRect) => {
       if (!mousePosRef.current) return;
       
@@ -76,14 +46,32 @@ const App: React.FC = () => {
       const dx = mousePosRef.current.x - centerX;
       const dy = mousePosRef.current.y - centerY;
 
-      if (Math.hypot(dx, dy) < 20) return; // Deadzone
+      if (Math.hypot(dx, dy) < 20) return;
 
-      // Strongest axis wins
       if (Math.abs(dx) > Math.abs(dy)) {
           movePlayer(dx > 0 ? 1 : -1, 0, dx > 0 ? Direction.RIGHT : Direction.LEFT);
       } else {
           movePlayer(0, dy > 0 ? 1 : -1, dy > 0 ? Direction.DOWN : Direction.UP);
       }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 2) return;
+    if (gameState.gameStatus !== GameStatus.PLAYING) return;
+
+    e.preventDefault();
+    const target = e.currentTarget as HTMLDivElement;
+    target.setPointerCapture(e.pointerId);
+    
+    const rect = target.getBoundingClientRect();
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    
+    moveTowardsMouse(rect);
+
+    if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
+    moveIntervalRef.current = window.setInterval(() => {
+         moveTowardsMouse(rect);
+    }, 200);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -94,7 +82,6 @@ const App: React.FC = () => {
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (e.button === 2) {
-        e.preventDefault();
         if (moveIntervalRef.current) {
             clearInterval(moveIntervalRef.current);
             moveIntervalRef.current = null;
@@ -106,13 +93,11 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black text-red-100">
       
-      {/* Header */}
       <header className="mb-4 text-center select-none z-10">
         <h1 className="text-3xl text-red-700 mb-1 drop-shadow-md font-bold tracking-widest">THE TITHE</h1>
         <p className="text-xs text-zinc-600">The Beast demands <span className="text-red-500">{QUOTA_TARGET}</span> souls... I mean crops.</p>
       </header>
 
-      {/* Game Container */}
       <div 
         className="relative bg-[#050505] border-4 border-zinc-900 shadow-[0_0_30px_rgba(100,0,0,0.3)] rounded-sm overflow-hidden touch-none cursor-crosshair"
         style={{ width, height }}
@@ -124,15 +109,11 @@ const App: React.FC = () => {
       >
         <WorldRenderer gameState={gameState} />
         
-        {/* Vignette Overlay */}
         <div className="absolute inset-0 pointer-events-none z-30 bg-[radial-gradient(circle,transparent_40%,#000000_100%)] opacity-80"></div>
-        {/* Day 7 Red Tint */}
         {gameState.day === MAX_DAYS && (
              <div className="absolute inset-0 pointer-events-none z-20 bg-red-900/10 mix-blend-overlay animate-pulse"></div>
         )}
 
-
-        {/* HUD Overlay */}
         <div className="absolute top-2 left-2 flex flex-col gap-2 pointer-events-none z-40">
           <div className="bg-black/80 p-2 rounded text-xs border border-red-900/30 text-red-100">
              <span className="text-zinc-500 uppercase text-[10px] block mb-1">Deadline</span>
@@ -149,13 +130,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Selected Seed HUD */}
         <div className="absolute top-2 right-2 pointer-events-none z-40 bg-black/80 p-2 rounded text-xs border border-zinc-800">
              <span className="text-zinc-500 uppercase text-[10px] block mb-1">Current Seed</span>
              {gameState.selectedSeed} ({gameState.inventory.seeds[gameState.selectedSeed]})
         </div>
 
-        {/* Game Over / Win Screens */}
         {gameState.gameStatus === GameStatus.LOST && (
             <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-1000">
                 <h2 className="text-4xl text-red-600 font-bold mb-4 tracking-widest">CONSUMED</h2>
@@ -171,8 +150,6 @@ const App: React.FC = () => {
             </div>
         )}
 
-
-        {/* Inventory Modal */}
         {showInventory && gameState.gameStatus === GameStatus.PLAYING && (
             <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center pointer-events-auto">
                 <div className="bg-zinc-900 border border-zinc-700 p-6 w-3/4 max-w-sm shadow-2xl">
@@ -201,9 +178,7 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Controls / Footer */}
       <div className="mt-6 flex flex-col items-center gap-4 max-w-lg w-full z-10">
-        
         <div className="grid grid-cols-2 gap-4 w-full">
             <button 
                 onClick={manualSave}

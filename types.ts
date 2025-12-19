@@ -1,11 +1,12 @@
+
 export enum TileType {
   GRASS = 'GRASS',
   DIRT = 'DIRT',
   WATER = 'WATER',
-  BARN_TL = 'BARN_TL', // Top Left
-  BARN_TR = 'BARN_TR', // Top Right
-  BARN_BL = 'BARN_BL', // Bottom Left
-  BARN_BR = 'BARN_BR', // Bottom Right
+  BARN_TL = 'BARN_TL',
+  BARN_TR = 'BARN_TR',
+  BARN_BL = 'BARN_BL',
+  BARN_BR = 'BARN_BR',
   FENCE = 'FENCE',
   ROCK = 'ROCK',
   STUMP = 'STUMP'

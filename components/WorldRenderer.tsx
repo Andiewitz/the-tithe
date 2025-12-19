@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { GameState, TileType, Direction } from '../types';
+import { GameState, TileType, Direction, TileData } from '../types';
 import { TILE_SIZE, SPRITES, PALETTE, GRID_WIDTH, GRID_HEIGHT, VIEWPORT_WIDTH_TILES, VIEWPORT_HEIGHT_TILES } from '../constants';
 import PixelTile from './PixelTile';
 
@@ -10,21 +11,18 @@ interface WorldRendererProps {
 const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
   const { grid, player } = gameState;
 
-  // Camera Logic
   const viewportWidthPx = VIEWPORT_WIDTH_TILES * TILE_SIZE;
   const viewportHeightPx = VIEWPORT_HEIGHT_TILES * TILE_SIZE;
   const mapWidthPx = GRID_WIDTH * TILE_SIZE;
   const mapHeightPx = GRID_HEIGHT * TILE_SIZE;
 
-  // Center camera on player
   let camX = (player.x * TILE_SIZE) + (TILE_SIZE / 2) - (viewportWidthPx / 2);
   let camY = (player.y * TILE_SIZE) + (TILE_SIZE / 2) - (viewportHeightPx / 2);
 
-  // Clamp camera to map bounds
   camX = Math.max(0, Math.min(camX, mapWidthPx - viewportWidthPx));
   camY = Math.max(0, Math.min(camY, mapHeightPx - viewportHeightPx));
 
-  const renderTile = (type: TileType, x: number, y: number, tileData: any) => {
+  const renderTile = (type: TileType, x: number, y: number, tileData: TileData) => {
     let sprite: string[] | undefined = SPRITES.GRASS;
     let colorMap: Record<string, string> = { 'g': PALETTE.GRASS_BASE, 'h': PALETTE.GRASS_LIGHT };
     let baseColor = PALETTE.GRASS_BASE;
@@ -61,7 +59,6 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         break;
     }
 
-    // Determine Crop Sprite
     let cropElement = null;
     if (tileData.crop) {
         const stage = Math.min(3, tileData.crop.growthStage);
@@ -98,7 +95,6 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         />
         {cropElement}
 
-        {/* Render Barn Detail Overlays */}
         {(type === TileType.BARN_TL) && <div className="absolute inset-0 bg-white/10 border-t-4 border-l-4 border-white/20" />}
         {(type === TileType.BARN_TR) && <div className="absolute inset-0 bg-white/10 border-t-4 border-r-4 border-white/20" />}
         {(type === TileType.BARN_BL) && <div className="absolute inset-0 bg-black/40 border-l-4 border-white/20 text-[10px] flex items-center justify-center font-bold text-red-300 tracking-widest">SLEEP</div>}
@@ -135,10 +131,8 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
             transform: `translate(${-camX}px, ${-camY}px)`
         }}
     >
-      {/* Map Layer */}
       {grid.map((row, y) => row.map((tile, x) => renderTile(tile.type, x, y, tile)))}
 
-      {/* Player Layer */}
       <div
         style={{
           width: TILE_SIZE,
@@ -146,7 +140,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
           position: 'absolute',
           left: player.x * TILE_SIZE,
           top: player.y * TILE_SIZE,
-          transition: 'top 0.15s steps(8), left 0.15s steps(8)', // Steppier animation for retro feel
+          transition: 'top 0.15s steps(8), left 0.15s steps(8)',
           transform: player.facing === Direction.LEFT ? 'scaleX(-1)' : 'none'
         }}
         className="z-20"
@@ -158,10 +152,6 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         />
       </div>
 
-       {/* Horror Vignette Overlay (Fixed relative to player via parent transform, but we want it sticky?)
-           Actually, CSS masks are better applied to the viewport container in App.tsx. 
-           Here we can add a light radius div centered on player.
-       */}
        <div 
          className="absolute pointer-events-none z-30 mix-blend-hard-light"
          style={{

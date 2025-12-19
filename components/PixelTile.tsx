@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { PALETTE } from '../constants';
 
@@ -27,7 +28,6 @@ const PixelTile: React.FC<PixelTileProps> = ({
         if (colorMap && colorMap[char]) {
           fill = colorMap[char];
         } else if (char !== '.') {
-           // Fallback or explicit mapping can go here
            fill = baseColor;
         } else {
             return null; // Transparent
@@ -57,7 +57,6 @@ const PixelTile: React.FC<PixelTileProps> = ({
       className={`block ${className}`}
       style={{ imageRendering: 'pixelated' }}
     >
-        {/* Background Base */}
         <rect x="0" y="0" width={width} height={height} fill={baseColor} />
         {pixels}
     </svg>
