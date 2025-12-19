@@ -102,19 +102,20 @@ export const useGameEngine = () => {
     });
   }, []);
 
-  const calculateSleep = (currentState: GameState): GameState => {
-      const nextDay = currentState.day + 1;
+  const advanceDay = useCallback(() => {
+    setGameState(prev => {
+      const nextDay = prev.day + 1;
       let newStatus = GameStatus.PLAYING;
 
       if (nextDay > MAX_DAYS) {
-          if (currentState.harvestedTotal >= QUOTA_TARGET) {
+          if (prev.harvestedTotal >= QUOTA_TARGET) {
               newStatus = GameStatus.WON;
           } else {
               newStatus = GameStatus.LOST;
           }
       }
 
-      const newGrid = currentState.grid.map(row => row.map(tile => {
+      const newGrid = prev.grid.map(row => row.map(tile => {
           let updatedTile = { ...tile, isWatered: false }; // Dries out overnight
           if (tile.crop && tile.crop.growthStage < 3) {
                // Watered crops grow faster
@@ -126,18 +127,22 @@ export const useGameEngine = () => {
       }));
 
       return {
-          ...currentState,
+          ...prev,
           day: nextDay,
           grid: newGrid,
           gameStatus: newStatus
       };
-  };
+    });
+  }, []);
 
   const interact = useCallback(() => {
     setGameState(prev => {
       if (prev.gameStatus !== GameStatus.PLAYING) return prev;
 
       const { x, y } = prev.player;
+      
+      // Determine what tile the player is "working" on. 
+      // Most games prioritize the tile you are standing on for tilling/planting.
       const targetTile = prev.grid[y][x];
       const newGrid = prev.grid.map(row => [...row]);
       let newInventory: Inventory = { 
@@ -146,7 +151,6 @@ export const useGameEngine = () => {
         tools: [...prev.inventory.tools]
       };
       let newHarvestedTotal = prev.harvestedTotal;
-      let newCanIsFull = prev.canIsFull;
 
       // 1. Tool Logic
       if (prev.selectedTool === 'HOE' && targetTile.type === TileType.GRASS) {
@@ -184,7 +188,7 @@ export const useGameEngine = () => {
           }
       }
 
-      // 2. Facing Interactions (Barn, Debris)
+      // 2. Facing Interactions (Clear debris)
       let faceX = x, faceY = y;
       switch (prev.player.facing) {
           case Direction.UP: faceY--; break;
@@ -195,12 +199,6 @@ export const useGameEngine = () => {
       const facedTile = prev.grid[faceY]?.[faceX];
       
       if (facedTile) {
-          if ([TileType.BARN_BL, TileType.BARN_BR, TileType.BARN_TL, TileType.BARN_TR].includes(facedTile.type)) {
-              // Note: Handling Tool shed trigger elsewhere via UI or here
-              return calculateSleep(prev);
-          }
-          // Debris still clearable without tools for now? Or maybe scythe/hoe?
-          // Let's make them clearable with Hoe/Scythe
           if ((prev.selectedTool === 'HOE' && facedTile.type === TileType.ROCK) || 
               (prev.selectedTool === 'SCYTHE' && facedTile.type === TileType.STUMP)) {
               newGrid[faceY][faceX] = { ...facedTile, type: TileType.GRASS, isCollidable: false };
@@ -279,7 +277,6 @@ export const useGameEngine = () => {
             let changed = false;
             const newGrid = prev.grid.map(row => row.map(tile => {
                 if (tile.crop && tile.crop.growthStage < 3) {
-                    // Watered tiles grow way faster
                     const growthChance = tile.isWatered ? 0.15 : 0.05;
                     if (Math.random() < growthChance) {
                         changed = true;
@@ -314,6 +311,7 @@ export const useGameEngine = () => {
     selectSeed,
     selectTool,
     acquireTool,
+    advanceDay,
     resetGame
   };
 };
