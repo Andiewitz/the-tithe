@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, TileType, Direction, TileData, GameStatus, Inventory } from '../types';
+import { GameState, TileType, Direction, TileData, GameStatus, Inventory, ToolType } from '../types';
 import { GRID_HEIGHT, GRID_WIDTH, INITIAL_PLAYER, AUTO_SAVE_INTERVAL_MS, INITIAL_INVENTORY, QUOTA_TARGET, MAX_DAYS } from '../constants';
 import { loadGame, saveGame, clearSave } from '../services/storageService';
 
@@ -39,7 +39,7 @@ const createInitialGrid = (): TileData[][] => {
           }
       }
 
-      row.push({ type, isCollidable });
+      row.push({ type, isCollidable, isWatered: false });
     }
     grid.push(row);
   }
@@ -51,6 +51,8 @@ const INITIAL_STATE: GameState = {
   player: INITIAL_PLAYER,
   inventory: INITIAL_INVENTORY,
   selectedSeed: 'WHEAT',
+  selectedTool: 'NONE',
+  canIsFull: false,
   day: 1,
   harvestedTotal: 0,
   gameStatus: GameStatus.PLAYING,
@@ -113,14 +115,14 @@ export const useGameEngine = () => {
       }
 
       const newGrid = currentState.grid.map(row => row.map(tile => {
+          let updatedTile = { ...tile, isWatered: false }; // Dries out overnight
           if (tile.crop && tile.crop.growthStage < 3) {
-               const growth = Math.random() < 0.2 ? 2 : 1;
-               return {
-                   ...tile,
-                   crop: { ...tile.crop, growthStage: Math.min(3, tile.crop.growthStage + growth) }
-               };
+               // Watered crops grow faster
+               const growthChance = tile.isWatered ? 0.6 : 0.2;
+               const growth = Math.random() < growthChance ? 1 : 0;
+               updatedTile.crop = { ...tile.crop, growthStage: Math.min(3, tile.crop.growthStage + growth) };
           }
-          return tile;
+          return updatedTile;
       }));
 
       return {
@@ -131,23 +133,28 @@ export const useGameEngine = () => {
       };
   };
 
-  const till = useCallback(() => {
+  const interact = useCallback(() => {
     setGameState(prev => {
       if (prev.gameStatus !== GameStatus.PLAYING) return prev;
 
       const { x, y } = prev.player;
-      if (!prev.grid[y] || !prev.grid[y][x]) return prev;
-
       const targetTile = prev.grid[y][x];
       const newGrid = prev.grid.map(row => [...row]);
       let newInventory: Inventory = { 
         seeds: { ...prev.inventory.seeds },
-        crops: { ...prev.inventory.crops }
+        crops: { ...prev.inventory.crops },
+        tools: [...prev.inventory.tools]
       };
       let newHarvestedTotal = prev.harvestedTotal;
+      let newCanIsFull = prev.canIsFull;
 
-      // 1. Harvest Crop
-      if (targetTile.crop && targetTile.crop.growthStage >= 3) {
+      // 1. Tool Logic
+      if (prev.selectedTool === 'HOE' && targetTile.type === TileType.GRASS) {
+          newGrid[y][x] = { ...targetTile, type: TileType.DIRT };
+          return { ...prev, grid: newGrid };
+      }
+
+      if (prev.selectedTool === 'SCYTHE' && targetTile.crop && targetTile.crop.growthStage >= 3) {
           const cropType = targetTile.crop.type;
           newGrid[y][x] = { ...targetTile, crop: undefined };
           newInventory.crops[cropType] += 1;
@@ -159,7 +166,25 @@ export const useGameEngine = () => {
           return { ...prev, grid: newGrid, inventory: newInventory, harvestedTotal: newHarvestedTotal };
       }
 
-      // 2. Clear Debris/Barn Interact
+      if (prev.selectedTool === 'CAN') {
+          // Check for water source nearby to refill
+          let nearWater = false;
+          const neighbors = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
+          for (const [dx, dy] of neighbors) {
+              if (prev.grid[y + dy]?.[x + dx]?.type === TileType.WATER) nearWater = true;
+          }
+
+          if (nearWater) {
+              return { ...prev, canIsFull: true };
+          }
+
+          if (prev.canIsFull && (targetTile.type === TileType.DIRT || targetTile.crop)) {
+              newGrid[y][x] = { ...targetTile, isWatered: true };
+              return { ...prev, grid: newGrid, canIsFull: false };
+          }
+      }
+
+      // 2. Facing Interactions (Barn, Debris)
       let faceX = x, faceY = y;
       switch (prev.player.facing) {
           case Direction.UP: faceY--; break;
@@ -171,18 +196,16 @@ export const useGameEngine = () => {
       
       if (facedTile) {
           if ([TileType.BARN_BL, TileType.BARN_BR, TileType.BARN_TL, TileType.BARN_TR].includes(facedTile.type)) {
+              // Note: Handling Tool shed trigger elsewhere via UI or here
               return calculateSleep(prev);
           }
-          if (facedTile.type === TileType.STUMP || facedTile.type === TileType.ROCK) {
+          // Debris still clearable without tools for now? Or maybe scythe/hoe?
+          // Let's make them clearable with Hoe/Scythe
+          if ((prev.selectedTool === 'HOE' && facedTile.type === TileType.ROCK) || 
+              (prev.selectedTool === 'SCYTHE' && facedTile.type === TileType.STUMP)) {
               newGrid[faceY][faceX] = { ...facedTile, type: TileType.GRASS, isCollidable: false };
               return { ...prev, grid: newGrid };
           }
-      }
-
-      // 3. Till Grass -> Dirt
-      if (targetTile.type === TileType.GRASS) {
-         newGrid[y][x] = { ...targetTile, type: TileType.DIRT };
-         return { ...prev, grid: newGrid };
       }
 
       return prev;
@@ -202,7 +225,8 @@ export const useGameEngine = () => {
         const newGrid = prev.grid.map(row => [...row]);
         const newInventory = { 
           seeds: { ...prev.inventory.seeds, [seedType]: seedCount - 1 },
-          crops: { ...prev.inventory.crops }
+          crops: { ...prev.inventory.crops },
+          tools: [...prev.inventory.tools]
         };
 
         newGrid[y][x] = {
@@ -225,6 +249,24 @@ export const useGameEngine = () => {
       setGameState(prev => ({ ...prev, selectedSeed: seed }));
   };
 
+  const selectTool = (tool: ToolType) => {
+      setGameState(prev => ({ ...prev, selectedTool: tool }));
+  };
+
+  const acquireTool = (tool: ToolType) => {
+      setGameState(prev => {
+          if (prev.inventory.tools.includes(tool)) return prev;
+          return {
+              ...prev,
+              inventory: {
+                  ...prev.inventory,
+                  tools: [...prev.inventory.tools, tool]
+              },
+              selectedTool: tool
+          };
+      });
+  };
+
   const resetGame = () => {
       clearSave();
       window.location.reload();
@@ -237,7 +279,9 @@ export const useGameEngine = () => {
             let changed = false;
             const newGrid = prev.grid.map(row => row.map(tile => {
                 if (tile.crop && tile.crop.growthStage < 3) {
-                    if (Math.random() < 0.05) {
+                    // Watered tiles grow way faster
+                    const growthChance = tile.isWatered ? 0.15 : 0.05;
+                    if (Math.random() < growthChance) {
                         changed = true;
                         return {
                             ...tile,
@@ -262,18 +306,14 @@ export const useGameEngine = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  const manualSave = () => {
-      saveGame(stateRef.current);
-      setGameState(prev => ({...prev, lastSaved: Date.now()}));
-  };
-
   return {
     gameState,
-    manualSave,
     movePlayer,
-    till,
+    interact,
     plant,
     selectSeed,
+    selectTool,
+    acquireTool,
     resetGame
   };
 };

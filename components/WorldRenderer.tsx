@@ -30,9 +30,12 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
 
     switch (type) {
       case TileType.DIRT:
-        baseColor = PALETTE.DIRT_BASE;
+        baseColor = tileData.isWatered ? PALETTE.DIRT_WATERED : PALETTE.DIRT_BASE;
         sprite = SPRITES.DIRT;
-        colorMap = { 'd': PALETTE.DIRT_BASE, 'l': PALETTE.DIRT_LIGHT }; 
+        colorMap = { 
+            'd': baseColor, 
+            'l': tileData.isWatered ? PALETTE.DIRT_BASE : PALETTE.DIRT_LIGHT 
+        }; 
         break;
       case TileType.WATER:
         baseColor = PALETTE.WATER_BASE;
@@ -43,7 +46,14 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
       case TileType.BARN_BL:
       case TileType.BARN_BR:
         baseColor = PALETTE.RED_BARN; 
-        sprite = undefined; 
+        sprite = SPRITES[type];
+        colorMap = {
+            'w': PALETTE.WHITE,
+            'r': PALETTE.RED_BARN,
+            'b': PALETTE.RED_BARN_BRIGHT,
+            'd': PALETTE.BLACK,
+            'x': PALETTE.WOOD_LIGHT
+        };
         break;
       case TileType.FENCE:
         baseColor = PALETTE.WOOD_DARK;
@@ -97,11 +107,17 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
         />
         {cropElement}
 
-        {/* Barn Overlay Visuals */}
-        {(type === TileType.BARN_TL) && <div className="absolute inset-0 bg-red-900/40 border-t-2 border-l-2 border-red-800" />}
-        {(type === TileType.BARN_TR) && <div className="absolute inset-0 bg-red-900/40 border-t-2 border-r-2 border-red-800" />}
-        {(type === TileType.BARN_BL) && <div className="absolute inset-0 bg-black/60 border-l-2 border-red-800 flex items-center justify-center text-[8px] font-bold text-red-500 uppercase">Sleep</div>}
-        {(type === TileType.BARN_BR) && <div className="absolute inset-0 bg-black/60 border-r-2 border-red-800" />}
+        {/* Watered overlay on crop */}
+        {tileData.isWatered && tileData.crop && (
+            <div className="absolute inset-0 bg-blue-500/10 pointer-events-none z-10" />
+        )}
+
+        {/* Barn Interactive Prompt */}
+        {(type === TileType.BARN_BL) && (
+            <div className="absolute inset-0 z-10 flex items-end justify-center pb-1 pointer-events-none">
+                <div className="bg-black/80 px-1 rounded text-[5px] font-bold text-red-500 uppercase tracking-tighter">Tools / Sleep</div>
+            </div>
+        )}
         
         {/* Fence Overlay */}
         {(type === TileType.FENCE) && <div className="absolute inset-0 border border-zinc-900 opacity-50" />}
@@ -139,7 +155,7 @@ const WorldRenderer: React.FC<WorldRendererProps> = ({ gameState }) => {
     >
       {grid.map((row, y) => row.map((tile, x) => renderTile(tile.type, x, y, tile)))}
 
-      {/* Player Character (16x16 sprite rendered in TILE_SIZE) */}
+      {/* Player Character */}
       <div
         style={{
           width: TILE_SIZE,

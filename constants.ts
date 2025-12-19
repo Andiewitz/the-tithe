@@ -19,6 +19,7 @@ export const PALETTE = {
   GRASS_LIGHT: '#2d3e2d',
   DIRT_BASE: '#3a2e25', 
   DIRT_LIGHT: '#4a3c31',
+  DIRT_WATERED: '#1f1813',
   WATER_BASE: '#0f1a24', 
   WATER_SHORE: '#1a2e3a',
   WOOD_DARK: '#2d1e1e',
@@ -175,6 +176,80 @@ export const SPRITES: Record<string, string[]> = {
     "..ggggg.",
     "...ggg..",
     "....g..."
+  ],
+  
+  // Barn Tiles
+  BARN_TL: [
+    "........",
+    "....wwww",
+    "..wwwwww",
+    ".wwwwwww",
+    "wwwwwwww",
+    "rrrrrrrr",
+    "rbrrrrrr",
+    "rbrrrrrr"
+  ],
+  BARN_TR: [
+    "........",
+    "wwww....",
+    "wwwwww..",
+    "wwwwwww.",
+    "wwwwwwww",
+    "rrrrrrrr",
+    "rrrrrrbr",
+    "rrrrrrbr"
+  ],
+  BARN_BL: [
+    "rbrrrrrr",
+    "rrrrrrrr",
+    "rrdddddd",
+    "rrdxdddd",
+    "rrddxddd",
+    "rrdddxdd",
+    "rrddddxd",
+    "rrdddddd"
+  ],
+  BARN_BR: [
+    "rrrrrrbr",
+    "rrrrrrrr",
+    "ddddddrr",
+    "ddddxdrr",
+    "dddxddrr",
+    "ddxdddrr",
+    "dxddddrr",
+    "ddddddrr"
+  ],
+
+  // Tools
+  HOE: [
+    "........",
+    "....www.",
+    "....w.w.",
+    "...w....",
+    "...w....",
+    "..w.....",
+    "..w.....",
+    "........"
+  ],
+  SCYTHE: [
+    "........",
+    "..wwww..",
+    ".w......",
+    ".w......",
+    "..w.....",
+    "..w.....",
+    "...w....",
+    "........"
+  ],
+  CAN: [
+    "........",
+    "...bbb..",
+    "..bbbbb.",
+    "wbbbbbb.",
+    "wbbbbbb.",
+    "..bbbbb.",
+    "........",
+    "........"
   ]
 };
 
@@ -193,5 +268,6 @@ export const INITIAL_INVENTORY: Inventory = {
   crops: {
     WHEAT: 0,
     CORN: 0
-  }
+  },
+  tools: []
 };

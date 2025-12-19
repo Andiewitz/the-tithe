@@ -25,6 +25,8 @@ export enum GameStatus {
   LOST = 'LOST'
 }
 
+export type ToolType = 'NONE' | 'HOE' | 'SCYTHE' | 'CAN';
+
 export interface Player {
   x: number;
   y: number;
@@ -42,6 +44,7 @@ export interface TileData {
   type: TileType;
   crop?: Crop;
   isCollidable: boolean;
+  isWatered?: boolean;
 }
 
 export interface Inventory {
@@ -52,7 +55,8 @@ export interface Inventory {
   crops: {
     WHEAT: number;
     CORN: number;
-  }
+  };
+  tools: ToolType[];
 }
 
 export interface GameState {
@@ -60,6 +64,8 @@ export interface GameState {
   player: Player;
   inventory: Inventory;
   selectedSeed: 'WHEAT' | 'CORN';
+  selectedTool: ToolType;
+  canIsFull: boolean;
   day: number;
   harvestedTotal: number;
   gameStatus: GameStatus;
